@@ -23,12 +23,12 @@ ss_mkjson_server_conf() {
 	eval "$(validate_server_section "$cfg" ss_validate_mklocal)"
 	validate_server_section "$cfgserver" || return 1
 	[ "$disabled" = 0 ] || return 1
-	ss_mkjson_server_conf_ "$cfgserver"
+	ss_mkjson_common_server_conf_ "$cfgserver"
+	[ -z "$server" ] || json_add_string server "$server"
 }
 
-ss_mkjson_server_conf_() {
+ss_mkjson_common_server_conf_() {
 	[ -n "$server_port" ] || return 1
-	[ -z "$server" ] || json_add_string server "$server"
 	json_add_int server_port "$server_port"
 	[ -z "$method" ] || json_add_string method "$method"
 	[ -z "$key" ] || json_add_string key "$key"
@@ -45,8 +45,23 @@ ss_mkjson_ss_redir_conf() {
 	ss_mkjson_server_conf
 }
 
+append_string_array() {
+	json_add_string "" "$1"
+}
+
 ss_mkjson_ss_server_conf() {
-	ss_mkjson_server_conf_
+	ss_mkjson_common_server_conf_
+	[ -z "$server" ] || {
+		local len
+		config_get len "$cfg" server_LENGTH
+		if [ -z "$len" ]; then
+			json_add_string server "$server"
+		else
+			json_add_array server
+			config_list_foreach "$cfg" server append_string_array
+			json_close_array
+		fi
+	}
 }
 
 ss_mkjson_ss_tunnel_conf() {
